@@ -14,7 +14,14 @@ export default class Worker {
   private previousSeats: Seat[] = [];
 
   async tick() {
-    const currentSeats = await this.repo.getAvailableSeats();
+    let currentSeats: Seat[] = [];
+
+    try {
+      currentSeats = await this.repo.getAvailableSeats();
+    } catch (e) {
+      console.error(e);
+      return;
+    }
 
     try {
       process.stdout.write('.');
