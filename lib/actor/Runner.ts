@@ -17,14 +17,13 @@ export default class Runner {
     console.log(this.options);
     console.log('시작');
 
-    const {slackWebhookUrl, pollIntervalMillis} = this.options;
-    const productId = Number.parseInt(this.options.productId);
+    const {seatViewUrl, slackWebhookUrl, pollIntervalMillis} = this.options;
     const interval = parseInt(pollIntervalMillis);
 
-    const fetcher = new Fetcher(productId);
+    const fetcher = new Fetcher(seatViewUrl);
     const repo = new PerfRepository(fetcher);
 
-    const notifier = new Notifier(productId, slackWebhookUrl);
+    const notifier = new Notifier(seatViewUrl, slackWebhookUrl);
     const worker = new Worker(repo, notifier);
 
     while (true) {

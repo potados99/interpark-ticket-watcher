@@ -1,3 +1,5 @@
+import {interceptParameters} from '../common/utils';
+
 export default class Seat {
   constructor(
     readonly id: string,
@@ -7,8 +9,13 @@ export default class Seat {
   ) {
   }
 
-  static fromRawSeat({sid, rn, sn, sl}: any): Seat {
-    return new Seat(sid, rn, sn, sl === 'Y');
+  static fromSelectSeatCallStatement(selectSeatCallStatement: string): Seat {
+    const params = interceptParameters('SelectSeat', selectSeatCallStatement);
+
+    const row = params[3];
+    const column = params[4];
+
+    return new Seat(`${row}${column}`, row, column, true);
   }
 
   get valid(): Boolean {

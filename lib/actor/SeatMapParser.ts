@@ -1,21 +1,18 @@
 import Seat from '../model/Seat';
+import cheerio from 'cheerio';
 
 export default class SeatMapParser {
-  constructor(private readonly rawSeatMap: any) {
-  }
-
-  allSeats(): Seat[] {
-    return this
-      .rawSeatMap
-      .seatData
-      .st
-      .flatMap((el: any) => el.ss)
-      .map((raw: any) => Seat.fromRawSeat(raw))
-      .filter((s: Seat) => s.valid);
+  constructor(private readonly seatMapHtml: string) {
   }
 
   availableSeats(): Seat[] {
-    return this.allSeats()
-      .filter(s => s.available);
+    const $ = cheerio.load(this.seatMapHtml);
+
+    return $('#TmgsTable')
+      .find('tr > td > img.stySeat')
+      .map((i, el) => el.attribs['onclick'])
+      .toArray()
+      .map((onclick) => onclick.replace('javascript: ', ''))
+      .map((statement) => Seat.fromSelectSeatCallStatement(statement))
   }
 }

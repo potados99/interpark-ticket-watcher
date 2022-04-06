@@ -1,10 +1,9 @@
-import Schedule from '../model/Schedule';
 import Seat from '../model/Seat';
 
 export default class Detector {
   constructor(
-    private readonly scheduleBefore: Schedule,
-    private readonly scheduleAfter: Schedule
+    private readonly seatsBefore: Seat[],
+    private readonly seatsAfter: Seat[]
   ) {
   }
 
@@ -18,31 +17,13 @@ export default class Detector {
 
   activatedSeats(): Seat[] {
     return this
-      .scheduleAfter
-      .seats
-      .filter(s =>
-        s.available &&
-        !this
-          .scheduleBefore
-          .seats
-          .filter(ss => ss.available)
-          .map(ss => ss.id)
-          .includes(s.id)
-      );
+      .seatsAfter
+      .filter(s => this.seatsBefore.find(ss => ss.id === s.id) == null);
   }
 
   deactivatedSeats(): Seat[] {
     return this
-      .scheduleAfter
-      .seats
-      .filter(s =>
-        !s.available &&
-        this
-          .scheduleBefore
-          .seats
-          .filter(ss => ss.available)
-          .map(ss => ss.id)
-          .includes(s.id)
-      );
+      .seatsBefore
+      .filter(s => this.seatsAfter.find(ss => ss.id === s.id) == null);
   }
 }

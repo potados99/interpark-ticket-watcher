@@ -1,7 +1,7 @@
 import PerfRepository from './PerfRepository';
-import Schedule from '../model/Schedule';
 import Detector from './Detector';
 import Notifier from './Notifier';
+import Seat from '../model/Seat';
 
 export default class Worker {
   constructor(
@@ -10,42 +10,41 @@ export default class Worker {
   ) {
   }
 
-  private previousSchedules: Schedule[] = [];
+  private working: Boolean = false;
+  private previousSeats: Seat[] = [];
 
   async tick() {
-    const schedules = await this.repo.getSchedules();
-    await Promise.all(schedules.map(s => s.fetchSeats(this.repo)));
+    const currentSeats = await this.repo.getAvailableSeats();
 
-    process.stdout.write('.');
+    try {
+      process.stdout.write('.');
 
-    if (this.previousSchedules.length === 0) {
-      process.stdout.write('!');
-      await this.notifier.notifyText('!');
+      if (!this.working) {
+        this.working = true;
 
-      this.previousSchedules = schedules;
-      return;
-    }
+        process.stdout.write('!');
+        await this.notifier.notifyText('!');
 
-    for (const current of schedules) {
-      const prev = this.previousSchedules.find(s => s.scheduleNo === current.scheduleNo);
-      if (prev == null) {
-        continue;
+        return;
       }
 
-      const detector = new Detector(prev, current);
+      const detector = new Detector(this.previousSeats, currentSeats);
+
       if (detector.hasNoChanges) {
-        continue;
+        return;
       }
 
       process.stdout.write('_');
 
       await this.notifier.notify({
-        schedule: current,
         activatedSeats: detector.activatedSeats(),
         deactivatedSeats: detector.deactivatedSeats()
       });
+    } catch (e: any) {
+      console.error(e);
+      await this.notifier.notifyText(e.message);
+    } finally {
+      this.previousSeats = currentSeats;
     }
-
-    this.previousSchedules = schedules;
   }
 }
