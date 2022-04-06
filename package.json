@@ -1,7 +1,7 @@
 {
-  "name": "melon-ticket-watcher",
+  "name": "interpark-ticket-watcher",
   "version": "0.0.1",
-  "description": "멜론티켓 취소표 watcher",
+  "description": "인터파크 취소표 watcher",
   "scripts": {
     "test": "jest",
     "dev": "nodemon --exec ts-node index.ts",
@@ -12,15 +12,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/potados99/melon-ticket-watcher.git"
+    "url": "git+https://github.com/potados99/interpark-ticket-watcher.git"
   },
   "keywords": [],
   "author": "potados99",
   "license": "GPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/potados99/melon-ticket-watcher/issues"
+    "url": "https://github.com/potados99/interpark-ticket-watcher/issues"
   },
-  "homepage": "https://github.com/potados99/melon-ticket-watcher#readme",
+  "homepage": "https://github.com/potados99/interpark-ticket-watcher#readme",
   "dependencies": {
     "commander": "^9.0.0",
     "date-fns": "^2.28.0",
