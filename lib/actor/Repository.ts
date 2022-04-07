@@ -1,15 +1,15 @@
-import Fetcher from './Fetcher';
 import Seat from '../model/Seat';
+import Accessor from './Accessor';
 import SeatMapParser from './SeatMapParser';
 
-export default class PerfRepository {
+export default class Repository {
   constructor(
-    private readonly fetcher: Fetcher
+    private readonly accessor: Accessor
   ) {
   }
 
   async getAvailableSeats(): Promise<Seat[]> {
-    const fetched = await this.fetcher.fetchSeatMapHtml();
+    const fetched = await this.accessor.getSeatMapDetail();
 
     return new SeatMapParser(fetched).availableSeats();
   }

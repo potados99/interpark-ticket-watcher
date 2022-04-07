@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import Seat from '../model/Seat';
+import Config from '../Config';
 
 type NotifyParams = {
   activatedSeats: Seat[],
@@ -8,8 +9,7 @@ type NotifyParams = {
 
 export default class Notifier {
   constructor(
-    private readonly seatViewUrl: string,
-    private readonly slackWebhookUrl: string
+    private readonly config: Config
   ) {
   }
 
@@ -18,17 +18,15 @@ export default class Notifier {
   }
 
   async notify({activatedSeats, deactivatedSeats}: NotifyParams) {
-    const goodsCode = new URLSearchParams(new URL(this.seatViewUrl).search).get('GoodsCode');
-
     const added = activatedSeats.length > 0 ? `${activatedSeats.map(s => s.toString()).join(', ')} 생김\n` : '';
     const gone = deactivatedSeats.length > 0 ? `${deactivatedSeats.map(s => s.toString()).join(', ')} 사라짐\n` : '';
-    const link = `<https://mobileticket.interpark.com/goods/${goodsCode}|바로가기>`;
+    const link = `<https://mobileticket.interpark.com/goods/${this.config.goodsCode}|바로가기>`;
 
     await this.postToSlack(`${added}${gone}\n${link}`);
   }
 
   private async postToSlack(text: string) {
-    await fetch(this.slackWebhookUrl, {
+    await fetch(this.config.slackWebhookUrl, {
       method: 'POST',
       headers: {'content-type': 'application/json'},
       body: JSON.stringify({text}),

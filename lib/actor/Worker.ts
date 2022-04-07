@@ -1,11 +1,11 @@
-import PerfRepository from './PerfRepository';
+import Seat from '../model/Seat';
 import Detector from './Detector';
 import Notifier from './Notifier';
-import Seat from '../model/Seat';
+import Repository from './Repository';
 
 export default class Worker {
   constructor(
-    private readonly repo: PerfRepository,
+    private readonly repo: Repository,
     private readonly notifier: Notifier
   ) {
   }
