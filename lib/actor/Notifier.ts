@@ -28,7 +28,7 @@ export default class Notifier {
 
   async notifySeatCatchResults(results: CatchResult[]) {
     const text = results
-      .map((result) => `${result.seat.toString()} 잡았습니다. 취소 cURL 스크립트:\n${result.cancelCurlScript}`)
+      .map((result) => `${result.seat.toString()} 예약하였습니다.\n취소하려면 다음 스크립트를 실행하세요:\n\`\`\`${result.cancelCurlScript}\`\`\``)
       .join('\n');
 
     await this.postToSlack(text);
