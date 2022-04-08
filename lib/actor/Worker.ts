@@ -2,10 +2,12 @@ import Seat from '../model/Seat';
 import Detector from './Detector';
 import Notifier from './Notifier';
 import Repository from './Repository';
+import Catcher from './Catcher';
 
 export default class Worker {
   constructor(
     private readonly repo: Repository,
+    private readonly catcher: Catcher,
     private readonly notifier: Notifier
   ) {
   }
@@ -35,18 +37,23 @@ export default class Worker {
         return;
       }
 
-      const detector = new Detector(this.previousSeats, currentSeats);
+      const catchResults = await this.catcher.catchIfDesired(currentSeats);
+      if (catchResults.length > 0) {
+        console.log(catchResults);
 
-      if (detector.hasNoChanges) {
-        return;
+        await this.notifier.notifySeatCatchResults(catchResults);
       }
 
-      process.stdout.write('_');
+      const detector = new Detector(this.previousSeats, currentSeats);
+      if (detector.hasChanges) {
+        process.stdout.write('_');
 
-      await this.notifier.notify({
-        activatedSeats: detector.activatedSeats(),
-        deactivatedSeats: detector.deactivatedSeats()
-      });
+        await this.notifier.notifySeatChanges({
+          activatedSeats: detector.activatedSeats(),
+          deactivatedSeats: detector.deactivatedSeats()
+        });
+      }
+
     } catch (e: any) {
       console.error(e);
       await this.notifier.notifyText(e.message);

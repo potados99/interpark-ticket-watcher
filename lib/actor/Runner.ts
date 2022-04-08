@@ -4,6 +4,7 @@ import {sleep} from '../common/utils';
 import Notifier from './Notifier';
 import Accessor from './Accessor';
 import Repository from './Repository';
+import Catcher from './Catcher';
 
 export default class Runner {
   async run() {
@@ -15,8 +16,10 @@ export default class Runner {
     const accessor = new Accessor(Config.current);
     const repo = new Repository(accessor);
 
+    const catcher = new Catcher(Config.current, accessor);
     const notifier = new Notifier(Config.current);
-    const worker = new Worker(repo, notifier);
+
+    const worker = new Worker(repo, catcher, notifier);
 
     while (true) {
       await worker.tick();

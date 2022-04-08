@@ -5,7 +5,7 @@ export default class Seat {
     readonly id: string,
     readonly row: string,
     readonly column: string,
-    readonly available: Boolean
+    readonly available: Boolean // 이 속성은 이 프로젝트에서는 안 써요.
   ) {
   }
 
@@ -27,6 +27,6 @@ export default class Seat {
   }
 
   toNormalizedString(): string {
-    return `${this.row}-${this.column}`;
+    return `${this.row}${this.column}`;
   }
 }

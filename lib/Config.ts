@@ -8,6 +8,7 @@ const options = program
   .requiredOption('--password <string>', '비밀번호')
   .requiredOption('--slack-webhook-url <string>', '슬랙으로 메시지를 보낼 웹 훅 URL')
   .option('--poll-interval-millis <number>', '폴링 간격(밀리초)', '500')
+  .option('--capture-regex <string>', '예약할 좌석 정규표현식')
 
 export default class Config {
   static current: Config;
@@ -21,6 +22,8 @@ export default class Config {
 
   readonly slackWebhookUrl: string;
   readonly pollIntervalMillis: number;
+
+  readonly captureRegex?: string;
 
   static parseCommandLineArguments() {
     this.current = Config.fromCommandLineArguments();
@@ -36,7 +39,8 @@ export default class Config {
       username: opts.username,
       password: opts.password,
       slackWebhookUrl: opts.slackWebhookUrl,
-      pollIntervalMillis: parseInt(opts.pollIntervalMillis)
+      pollIntervalMillis: parseInt(opts.pollIntervalMillis),
+      captureRegex: opts.captureRegex,
     });
   }
 

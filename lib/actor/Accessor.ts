@@ -1,8 +1,24 @@
 import qs from 'qs';
 import Seat from '../model/Seat';
+import iconv from 'iconv-lite';
 import Config from '../Config';
+import cheerio from 'cheerio';
 import {newAxiosInstance, newCookieJar} from '../common/axios';
 
+type Session = {
+  sessionId: string;
+  oneStopModel: any;
+}
+
+type ReserveResult = {
+  cancelCurlScript: string;
+};
+
+/**
+ * 인터파크에 요청 보낼 때에 사용하는 친구입니다.
+ * 계정 정보가 있으면 로그인할 수 있습니다.
+ * 쿠키 저장소를 가지고 있습니다.
+ */
 export default class Accessor {
   constructor(
     private readonly config: Config
@@ -11,31 +27,24 @@ export default class Accessor {
 
   private jar = newCookieJar();
   private axios = newAxiosInstance(this.jar);
-  private sessionId: string;
 
   /**
-   * 좌석맵 HTML 쓸어옵니다.
+   * 좌석을 잡는 데에 사용될 세션입니다.
+   * 테스트 결과 한 번 만들어 놓으면 계속 가는 것 같으니,
+   * 따로 새로고침은 안 합니다.
+   * @private
    */
-  async getSeatMapDetail(): Promise<string> {
-    const querystring = qs.stringify({
-      GoodsCode: this.config.goodsCode,
-      PlaceCode: this.config.placeCode,
-      PlaySeq: this.config.playSeq,
-      Block: 'RGN001',
-      TmgsOrNot: 'D2006'
-    });
-
-    const result = await this.axios.get(`https://aspseat-ticket.interpark.com/Booking/App/MOSeatDetail.asp?${querystring}`);
-
-    return result.data;
-  }
+  private session: Session;
 
   /**
-   * 새로고침합니다. 로그인 후 세션 ID까지 다시 받아옵니다.
+   * 새로고침합니다. 로그인 후 세션 ID와 OneStopModel 까지 다시 받아옵니다.
    */
   async reload(): Promise<void> {
     await this.login();
-    this.sessionId = await this.generateSessionId();
+
+    this.session = await this.generateSession();
+
+    console.log(`Accessor 리로드 완료!`);
   }
 
   /**
@@ -70,18 +79,28 @@ export default class Accessor {
    * 좌석 킵할때 사용될 세션 ID를 만들어옵니다.
    * 주의: 로그인이 되어 있어야(쿠키에 id_token이 숨쉬고 있어야) 합니다.
    */
-  async generateSessionId(): Promise<string> {
-    // 세션 만드는 페이지로 진입합니다. 결과는 응답 속에 담겨 있습니다.
-    const result = await this.axios.get(`https://moticket.interpark.com/OneStop/Session?GoodsCode=${this.config.goodsCode}`);
+  async generateSession(): Promise<Session> {
+    const result = await this.axios.get(
+      `https://moticket.interpark.com/OneStop/Session?GoodsCode=${this.config.goodsCode}`,
+      {responseType: 'arraybuffer'}
+    );
 
-    // 끄내옵니다.
-    const sessionId = /"SessionID":"(?<sessionId>[A-Z0-9]+)"/.exec(result.data)?.groups?.sessionId;
+    const content = iconv.decode(result.data, 'EUC-KR').toString();
 
-    if (sessionId == null) {
-      throw new Error(`${this.config.goodsCode} 상품에 대해 세션 발급 실패! 자세한 이야기는 페이지 소스 보세요: ${result.data}`);
+    const $ = cheerio.load(content);
+    const $input = $('input#OneStopModel');
+
+    const oneStopModelString = $input.attr('value');
+    if (oneStopModelString == null) {
+      throw new Error('페이지 내에 OneStopModel이 없습니다ㅠ');
     }
 
-    return sessionId;
+    const oneStopModel = JSON.parse(oneStopModelString);
+
+    return {
+      sessionId: oneStopModel.GoodsInfo.SessionID,
+      oneStopModel
+    };
   }
 
   /**
@@ -89,16 +108,16 @@ export default class Accessor {
    *
    * @param seat 킵할 자리.
    */
-  async reserveSeat(seat: Seat) {
-    if (this.sessionId == null) {
+  async reserveSeat(seat: Seat): Promise<ReserveResult> {
+    if (this.session == null) {
       await this.reload();
     }
 
-    const params = {
+    const reserveParams = {
       GoodsCode: this.config.goodsCode,
       PlaceCode: this.config.placeCode,
       PlaySeq: this.config.playSeq,
-      SessionID: `F0A0D1E19BBD4096BCD78A747EEBB873`,
+      SessionID: this.session.sessionId,
       SeatCnt: `1`,
       SeatGrade: `1^`,
       Floor: `^`,
@@ -108,6 +127,57 @@ export default class Accessor {
       SportsYN: 'N'
     };
 
-    await this.axios.post('https://moticket.interpark.com/OneStop/SaveSeatAjax', qs.stringify(params));
+    await this.axios.post(
+      'https://moticket.interpark.com/OneStop/SaveSeatAjax',
+      qs.stringify(reserveParams)
+    );
+
+    return {
+      cancelCurlScript: this.generateDropSeatCurlScript(seat)
+    }
+  }
+
+  /**
+   * 지정된 자리를 드랍하는 cURL 스크립트를 만들어 반환합니다.
+   * @param seat 드랍할 자리.
+   * @private
+   */
+  private generateDropSeatCurlScript(seat: Seat): string {
+    const oneStopModel = {
+      'GoodsInfo': this.session.oneStopModel.GoodsInfo,
+      'PlayDateTime': {
+        'PlaySeq': this.config.playSeq,
+      },
+      'SeatInfo': {
+        'BlockNo': '001^',
+        'Floor': '^',
+        'RowNo': `${seat.row}^`,
+        'SeatNo': `${seat.column}^`,
+        'SeatGrade': '1^',
+        'IsBlock': 'Y',
+        'SeatCnt': 1,
+      }
+    };
+
+    const body = `OneStopModel=${encodeURIComponent(JSON.stringify(oneStopModel))}`;
+
+    return `curl --location --request POST 'https://moticket.interpark.com/OneStop/Seat' --header 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' --data-raw '${body}'`;
+  }
+
+  /**
+   * 좌석맵 HTML 쓸어옵니다.
+   */
+  async getSeatMapDetail(): Promise<string> {
+    const querystring = qs.stringify({
+      GoodsCode: this.config.goodsCode,
+      PlaceCode: this.config.placeCode,
+      PlaySeq: this.config.playSeq,
+      Block: 'RGN001',
+      TmgsOrNot: 'D2006'
+    });
+
+    const result = await this.axios.get(`https://aspseat-ticket.interpark.com/Booking/App/MOSeatDetail.asp?${querystring}`);
+
+    return result.data;
   }
 }
