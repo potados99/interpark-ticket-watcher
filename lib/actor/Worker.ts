@@ -39,7 +39,7 @@ export default class Worker {
 
       const catchResults = await this.catcher.catchIfDesired(currentSeats);
       if (catchResults.length > 0) {
-        console.log(catchResults);
+        console.log(`${catchResults}`);
 
         await this.notifier.notifySeatCatchResults(catchResults);
       }

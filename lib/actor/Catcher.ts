@@ -1,10 +1,10 @@
 import Seat from '../model/Seat';
 import Config from '../Config';
-import Accessor from './Accessor';
+import Accessor, {AfterReserveScripts} from './Accessor';
 
 export type CatchResult = {
   seat: Seat;
-  cancelCurlScript: string;
+  scripts: AfterReserveScripts;
 };
 
 /**
@@ -29,11 +29,11 @@ export default class Catcher {
 
     for (const seat of seats) {
       if (regex.test(seat.toNormalizedString())) {
-        const {cancelCurlScript} = await this.accessor.reserveSeat(seat);
+        const scripts = await this.accessor.reserveSeat(seat);
 
         results.push({
           seat,
-          cancelCurlScript
+          scripts
         });
       }
     }

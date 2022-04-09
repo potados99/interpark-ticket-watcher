@@ -10,7 +10,8 @@ type Session = {
   oneStopModel: any;
 }
 
-type ReserveResult = {
+export type AfterReserveScripts = {
+  nextStepScript: string;
   cancelCurlScript: string;
 };
 
@@ -108,7 +109,7 @@ export default class Accessor {
    *
    * @param seat 킵할 자리.
    */
-  async reserveSeat(seat: Seat): Promise<ReserveResult> {
+  async reserveSeat(seat: Seat): Promise<AfterReserveScripts> {
     if (this.session == null) {
       await this.reload();
     }
@@ -132,21 +133,20 @@ export default class Accessor {
       qs.stringify(reserveParams)
     );
 
-    return {
-      cancelCurlScript: this.generateDropSeatCurlScript(seat)
-    }
+    return this.generateScripts(seat);
   }
 
   /**
-   * 지정된 자리를 드랍하는 cURL 스크립트를 만들어 반환합니다.
-   * @param seat 드랍할 자리.
+   * 브라우저 콘솔에서 실행할 예매 재개 스크립트와 예약 취소 cURL 스크립트를 만들어옵니다.
+   *
+   * @param seat 예매할 자리.
    * @private
    */
-  private generateDropSeatCurlScript(seat: Seat): string {
+  private generateScripts(seat: Seat): AfterReserveScripts {
     const oneStopModel = {
       'GoodsInfo': this.session.oneStopModel.GoodsInfo,
       'PlayDateTime': {
-        'PlaySeq': this.config.playSeq,
+        'PlaySeq': this.config.playSeq
       },
       'SeatInfo': {
         'BlockNo': '001^',
@@ -155,13 +155,35 @@ export default class Accessor {
         'SeatNo': `${seat.column}^`,
         'SeatGrade': '1^',
         'IsBlock': 'Y',
-        'SeatCnt': 1,
+        'SeatCnt': 1
       }
     };
 
     const body = `OneStopModel=${encodeURIComponent(JSON.stringify(oneStopModel))}`;
 
-    return `curl --location --request POST 'https://moticket.interpark.com/OneStop/Seat' --header 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' --data-raw '${body}'`;
+    // 브라우저 콘솔에서 실행합니다. 결제화면으로 넘어가는 스크립트입니다.
+    const nextStepScript = `
+fetch('https://moticket.interpark.com/OneStop/Seat', { 
+    method: 'POST', 
+    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}, 
+    body: '${body}' 
+  }
+).finally(() => { 
+  document.getElementById('ifrmSeat').contentWindow.document.getElementById('ifrmSeatDetail').onload = () => { 
+    document.getElementById('ifrmSeat').contentWindow.document.getElementById('ifrmSeatDetail').onload = () => {};
+    document.getElementById('ifrmSeat').contentWindow.document.getElementById('ifrmSeatDetail').contentWindow.document.querySelector('img.stySeat[alt="[전석] ${seat.row}-${seat.column}"]').click(); 
+    document.getElementById('ifrmSeat').contentWindow.fnSelect(); 
+  };
+  document.getElementById('ifrmSeat').contentWindow.fnRefresh();
+});`;
+
+    // 쉘에서 실행합니다. 자리 예약을 취소하는 명령입니다.
+    const cancelCurlScript = `curl --location --request POST 'https://moticket.interpark.com/OneStop/Seat' --header 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' --data-raw '${body}'`;
+
+    return {
+      nextStepScript,
+      cancelCurlScript
+    };
   }
 
   /**
