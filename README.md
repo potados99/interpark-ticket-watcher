@@ -23,6 +23,7 @@ $ npm start -- \
 예시:
 
 ```bash
+$ npm start -- \
 --goods-code 22003760 
 --place-code 20000611 
 --play-seq 001 
