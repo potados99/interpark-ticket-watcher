@@ -69,7 +69,7 @@ export default class Accessor {
     const callbackUrl = loginResult.data.callback_url;
 
     if (resultCode !== '00') {
-      throw new Error(`로그인 실패!! 자세한 응답은 요기: ${loginResult.data}`);
+      throw new Error(`로그인 실패!! 자세한 응답은 요기: ${JSON.stringify(loginResult.data)}`);
     }
 
     // 주어진 콜백 URL로 들어가면 또 쿠키가 우수수 떨어지는데, 그중에 id_token이 있습니다.
