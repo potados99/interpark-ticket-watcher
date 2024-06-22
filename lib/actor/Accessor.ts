@@ -74,6 +74,11 @@ export default class Accessor {
 
     // 주어진 콜백 URL로 들어가면 또 쿠키가 우수수 떨어지는데, 그중에 id_token이 있습니다.
     await this.axios.get(callbackUrl);
+
+    const idToken = this.jar.toJSON().cookies.find(c => c.key === 'id_token');
+    if (idToken == null) {
+      throw new Error('로그인 후 id_token이 없습니다ㅠ');
+    }
   }
 
   /**
